@@ -1,0 +1,34 @@
+{
+  "name": "PageSage",
+  "description": "AI-powered extension to query and summarize webpage content including text and images",
+  "version": "1.0.0",
+  "manifest_version": 3,
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "PageSage - AI Page Assistant"
+  },
+  
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+}

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PageSage</title>
+  <style>
+    /* =========================================================================
+       CSS Styles for PageSage Extension Popup
+       ========================================================================= */
+    
+    /* Reset and Base Styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 400px;
+      min-height: 500px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+    }
+    
+    /* Container */
+    .container {
+      padding: 20px;
+    }
+    
+    /* Header Section */
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      color: white;
+    }
+    
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    .header .subtitle {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    
+    /* Settings Button */
+    .settings-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      color: white;
+      font-size: 16px;
+      transition: background 0.3s;
+    }
+    
+    .settings-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Main Content Card */
+    .content-card {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Page Info Section */
+    .page-info {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 15px;
+    }
+    
+    .page-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    
+    .page-url {
+      font-size: 11px;
+      color: #666;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    /* Quick Actions */
+    .quick-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+    
+    .quick-btn {
+      flex: 1;
+      min-width: calc(50% - 4px);
+      padding: 10px 12px;
+      background: #f0f0f0;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    
+    .quick-btn:hover {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+    
+    /* Query Input Section */
+    .query-section {
+      margin-bottom: 15px;
+    }
+    
+    .query-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+      display: block;
+    }
+    
+    .query-input-wrapper {
+      position: relative;
+    }
+    
+    .query-input {
+      width: 100%;
+      padding: 12px 50px 12px 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 14px;
+      resize: none;
+      min-height: 80px;
+      font-family: inherit;
+      transition: border-color 0.3s;
+    }
+    
+    .query-input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .query-input::placeholder {
+      color: #aaa;
+    }
+    
+    .send-btn {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      width: 36px;
+      height: 36px;
+      background: #667eea;
+      border: none;
+      border-radius: 50%;
+      color: white;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s, transform 0.2s;
+    }
+    
+    .send-btn:hover {
+      background: #5a6fd6;
+      transform: scale(1.05);
+    }
+    
+    .send-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    /* Include Images Toggle */
+    .options-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .toggle-switch {
+      position: relative;
+      width: 40px;
+      height: 22px;
+    }
+    
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: 0.3s;
+      border-radius: 22px;
+    }
+    
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+      background-color: #667eea;
+    }
+    
+    input:checked + .toggle-slider:before {
+      transform: translateX(18px);
+    }
+    
+    /* Response Section */
+    .response-section {
+      margin-top: 15px;
+      display: none;
+    }
+    
+    .response-section.visible {
+      display: block;
+    }
+    
+    .response-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+      display: block;
+    }
+    
+    .response-box {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 15px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #333;
+    }
+    
+    .response-box.loading {
+      text-align: center;
+      color: #666;
+    }
+    
+    .response-box.error {
+      background: #fee;
+      color: #c33;
+    }
+    
+    /* Loading Animation */
+    .loading-dots {
+      display: inline-flex;
+      gap: 4px;
+    }
+    
+    .loading-dots span {
+      width: 8px;
+      height: 8px;
+      background: #667eea;
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out both;
+    }
+    
+    .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+    .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+    
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); }
+      40% { transform: scale(1); }
+    }
+    
+    /* Settings Panel */
+    .settings-panel {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: white;
+      z-index: 100;
+      padding: 20px;
+      border-radius: 16px;
+    }
+    
+    .settings-panel.visible {
+      display: block;
+    }
+    
+    .settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    
+    .settings-header h2 {
+      font-size: 18px;
+      color: #333;
+    }
+    
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #666;
+    }
+    
+    .settings-group {
+      margin-bottom: 20px;
+    }
+    
+    .settings-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+    }
+    
+    .settings-input {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: monospace;
+    }
+    
+    .settings-input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .save-settings-btn {
+      width: 100%;
+      padding: 12px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    
+    .save-settings-btn:hover {
+      background: #5a6fd6;
+    }
+    
+    .settings-note {
+      font-size: 11px;
+      color: #888;
+      margin-top: 8px;
+    }
+    
+    /* Copy Button */
+    .copy-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #667eea;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      color: white;
+      font-size: 11px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    .response-wrapper:hover .copy-btn {
+      opacity: 1;
+    }
+    
+    .response-wrapper {
+      position: relative;
+    }
+    
+    /* Debug button */
+    .debug-btn {
+      background: #f0f0f0;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .debug-btn:hover {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+    
+    .debug-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    /* Extraction status */
+    .extraction-status {
+      font-size: 11px;
+      color: #888;
+      text-align: center;
+      padding: 5px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+    
+    .extraction-status.complete {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>
+        <span>🔍</span>
+        PageSage
+      </h1>
+      <p class="subtitle">AI-powered webpage analysis</p>
+    </div>
+    
+    <!-- Settings Button -->
+    <button class="settings-btn" id="settingsBtn" title="Settings">⚙️</button>
+    
+    <!-- Main Content Card -->
+    <div class="content-card">
+      <!-- Current Page Info -->
+      <div class="page-info">
+        <div class="page-title" id="pageTitle">Loading page info...</div>
+        <div class="page-url" id="pageUrl"></div>
+      </div>
+      
+      <!-- Quick Action Buttons -->
+      <div class="quick-actions">
+        <button class="quick-btn" data-query="Give me a short summary of this page in 2-3 sentences.">
+          📝 Quick Summary
+        </button>
+        <button class="quick-btn" data-query="What is this page about? Explain the main topic.">
+          🎯 What's This About?
+        </button>
+        <button class="quick-btn" data-query="List the key points and main takeaways from this page.">
+          📌 Key Points
+        </button>
+        <button class="quick-btn" data-query="Describe any images on this page and their relevance.">
+          🖼️ Describe Images
+        </button>
+      </div>
+      
+      <!-- Custom Query Input -->
+      <div class="query-section">
+        <label class="query-label">Ask anything about this page:</label>
+        <div class="query-input-wrapper">
+          <textarea 
+            class="query-input" 
+            id="queryInput" 
+            placeholder="e.g., What are the main arguments? Summarize the conclusion..."
+          ></textarea>
+          <button class="send-btn" id="sendBtn" title="Send">➤</button>
+        </div>
+      </div>
+      
+      <!-- Options -->
+      <div class="options-row">
+        <label class="toggle-switch">
+          <input type="checkbox" id="includeImages" disabled>
+          <span class="toggle-slider"></span>
+        </label>
+        <span>Image analysis (text-only with Groq)</span>
+      </div>
+      
+      <!-- Debug: Save extracted content -->
+      <div class="options-row" style="gap: 8px;">
+        <button class="debug-btn" id="autoScrollBtn" title="Auto-scroll page to capture all content">
+          📜 Auto-Scroll & Extract
+        </button>
+        <button class="debug-btn" id="saveContentBtn" title="Save extracted content to file for verification">
+          💾 Save Content
+        </button>
+      </div>
+      
+      <!-- Extraction status -->
+      <div class="extraction-status" id="extractionStatus">
+        <span id="charCount">0</span> chars extracted
+      </div>
+      
+      <!-- Response Section -->
+      <div class="response-section" id="responseSection">
+        <label class="response-label">Response:</label>
+        <div class="response-wrapper">
+          <div class="response-box" id="responseBox"></div>
+          <button class="copy-btn" id="copyBtn">Copy</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Settings Panel (Overlay) -->
+    <div class="settings-panel" id="settingsPanel">
+      <div class="settings-header">
+        <h2>⚙️ Settings</h2>
+        <button class="close-btn" id="closeSettings">×</button>
+      </div>
+      
+      <div class="settings-group">
+        <label for="apiKeyInput">Groq API Key (FREE)</label>
+        <input 
+          type="password" 
+          class="settings-input" 
+          id="apiKeyInput" 
+          placeholder="gsk_..."
+        >
+        <p class="settings-note">
+          Get your FREE API key from <a href="https://console.groq.com/keys" target="_blank">Groq Console</a><br>
+          <strong>Free tier:</strong> 30 requests/min, very fast!
+        </p>
+      </div>
+      
+      <button class="save-settings-btn" id="saveSettings">Save Settings</button>
+    </div>
+  </div>
+  
+  <!-- Load popup script -->
+  <script src="popup.js"></script>
+</body>
+</html>
