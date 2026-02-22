@@ -9,6 +9,40 @@
        CSS Styles for PageSage Extension Popup
        ========================================================================= */
     
+    /* CSS Variables for Theming */
+    :root {
+      --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --card-bg: white;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-muted: #888;
+      --border-color: #e0e0e0;
+      --input-bg: white;
+      --chat-bg: #f8f9fa;
+      --page-info-bg: #f8f9fa;
+      --btn-bg: #f0f0f0;
+      --btn-hover-bg: #667eea;
+      --settings-bg: white;
+      --assistant-msg-bg: white;
+    }
+    
+    /* Dark Theme */
+    body.dark-theme {
+      --bg-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      --card-bg: #1e1e2e;
+      --text-primary: #e0e0e0;
+      --text-secondary: #aaa;
+      --text-muted: #777;
+      --border-color: #3a3a4a;
+      --input-bg: #2a2a3a;
+      --chat-bg: #252535;
+      --page-info-bg: #252535;
+      --btn-bg: #2a2a3a;
+      --btn-hover-bg: #667eea;
+      --settings-bg: #1e1e2e;
+      --assistant-msg-bg: #2a2a3a;
+    }
+    
     /* Reset and Base Styles */
     * {
       margin: 0;
@@ -25,8 +59,9 @@
       width: 100%;
       min-height: 500px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: #333;
+      background: var(--bg-gradient);
+      color: var(--text-primary);
+      transition: background 0.3s;
     }
     
     /* Container */
@@ -41,6 +76,7 @@
     .header {
       text-align: center;
       margin-bottom: 20px;
+      padding-top: 25px;
       color: white;
     }
     
@@ -99,68 +135,93 @@
       background: rgba(255, 255, 255, 0.3);
     }
     
+    /* Theme Toggle Button */
+    .theme-btn {
+      position: absolute;
+      top: 15px;
+      right: 95px;
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      color: white;
+      font-size: 16px;
+      transition: background 0.3s;
+    }
+    
+    .theme-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
     /* Main Content Card */
     .content-card {
-      background: white;
+      background: var(--card-bg);
       border-radius: 16px;
-      padding: 20px;
+      padding: 15px;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
       flex: 1;
       display: flex;
       flex-direction: column;
+      transition: background 0.3s;
     }
     
     /* Page Info Section */
     .page-info {
-      background: #f8f9fa;
+      background: var(--page-info-bg);
       border-radius: 10px;
-      padding: 12px;
-      margin-bottom: 15px;
+      padding: 10px;
+      margin-bottom: 10px;
+      transition: background 0.3s;
     }
     
     .page-title {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
-      color: #333;
+      color: var(--text-primary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
+      transition: color 0.3s;
     }
     
     .page-url {
-      font-size: 11px;
-      color: #666;
+      font-size: 10px;
+      color: var(--text-secondary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      transition: color 0.3s;
     }
     
     /* Quick Actions */
     .quick-actions {
       display: flex;
-      gap: 8px;
-      margin-bottom: 15px;
+      gap: 6px;
+      margin-bottom: 10px;
       flex-wrap: wrap;
     }
     
     .quick-btn {
       flex: 1;
-      min-width: calc(50% - 4px);
-      padding: 10px 12px;
-      background: #f0f0f0;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      font-size: 12px;
+      min-width: calc(50% - 3px);
+      padding: 6px 8px;
+      background: var(--btn-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 11px;
       cursor: pointer;
       transition: all 0.2s;
       text-align: center;
+      color: var(--text-primary);
     }
     
     .quick-btn:hover {
-      background: #667eea;
+      background: var(--btn-hover-bg);
       color: white;
-      border-color: #667eea;
+      border-color: var(--btn-hover-bg);
     }
     
     /* Query Input Section */
@@ -230,101 +291,147 @@
       transform: none;
     }
     
-    /* Include Images Toggle */
-    .options-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 15px;
-      font-size: 12px;
-      color: #666;
-    }
-    
-    .toggle-switch {
-      position: relative;
-      width: 40px;
-      height: 22px;
-    }
-    
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    
-    .toggle-slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #ccc;
-      transition: 0.3s;
-      border-radius: 22px;
-    }
-    
-    .toggle-slider:before {
-      position: absolute;
-      content: "";
-      height: 16px;
-      width: 16px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: 0.3s;
-      border-radius: 50%;
-    }
-    
-    input:checked + .toggle-slider {
-      background-color: #667eea;
-    }
-    
-    input:checked + .toggle-slider:before {
-      transform: translateX(18px);
-    }
-    
-    /* Response Section */
-    .response-section {
-      margin-top: 15px;
-      display: none;
+    /* Chat Container */
+    .chat-container {
       flex: 1;
+      display: flex;
       flex-direction: column;
       min-height: 0;
+      margin-top: 8px;
     }
     
-    .response-section.visible {
-      display: flex;
-    }
-    
-    .response-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: #555;
-      margin-bottom: 8px;
-      display: block;
-    }
-    
-    .response-box {
-      background: #f8f9fa;
-      border-radius: 10px;
-      padding: 15px;
-      min-height: 100px;
+    .chat-messages {
       flex: 1;
       overflow-y: auto;
-      font-size: 13px;
-      line-height: 1.6;
-      color: #333;
+      padding: 8px;
+      background: var(--chat-bg);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+      transition: background 0.3s;
     }
     
-    .response-box.loading {
-      text-align: center;
-      color: #666;
+    .chat-messages:empty {
+      padding: 0;
+      flex: 0;
+      display: none;
     }
     
-    .response-box.error {
+    .chat-message {
+      max-width: 85%;
+      padding: 8px 12px;
+      border-radius: 14px;
+      font-size: 12px;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+    
+    .chat-message.user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+    
+    .chat-message.assistant {
+      align-self: flex-start;
+      background: var(--assistant-msg-bg);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-bottom-left-radius: 4px;
+      transition: background 0.3s, color 0.3s, border-color 0.3s;
+    }
+    
+    .chat-message.error {
       background: #fee;
       color: #c33;
+      border-color: #fcc;
+    }
+    
+    .chat-message.loading {
+      background: var(--assistant-msg-bg);
+      color: var(--text-secondary);
+    }
+    
+    .chat-input-area {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-color);
+      align-items: flex-end;
+    }
+    
+    .chat-input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 2px solid var(--border-color);
+      border-radius: 18px;
+      font-size: 12px;
+      resize: none;
+      min-height: 36px;
+      max-height: 100px;
+      font-family: inherit;
+      background: var(--input-bg);
+      color: var(--text-primary);
+      overflow-y: auto;
+      transition: border-color 0.3s, background 0.3s, color 0.3s;
+    }
+    
+    .chat-input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .chat-send-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.2s, opacity 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .chat-send-btn:hover {
+      transform: scale(1.05);
+    }
+    
+    .chat-send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .clear-chat-btn {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 11px;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+    
+    .clear-chat-btn:hover {
+      color: #c33;
+    }
+    
+    .chat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    
+    .chat-header-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      transition: color 0.3s;
     }
     
     /* Loading Animation */
@@ -357,10 +464,11 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: white;
+      background: var(--settings-bg);
       z-index: 100;
       padding: 20px;
       border-radius: 16px;
+      transition: background 0.3s;
     }
     
     .settings-panel.visible {
@@ -376,7 +484,8 @@
     
     .settings-header h2 {
       font-size: 18px;
-      color: #333;
+      color: var(--text-primary);
+      transition: color 0.3s;
     }
     
     .close-btn {
@@ -384,7 +493,8 @@
       border: none;
       font-size: 24px;
       cursor: pointer;
-      color: #666;
+      color: var(--text-secondary);
+      transition: color 0.3s;
     }
     
     .settings-group {
@@ -395,17 +505,21 @@
       display: block;
       font-size: 13px;
       font-weight: 600;
-      color: #555;
+      color: var(--text-secondary);
       margin-bottom: 8px;
+      transition: color 0.3s;
     }
     
     .settings-input {
       width: 100%;
       padding: 10px;
-      border: 2px solid #e0e0e0;
+      border: 2px solid var(--border-color);
       border-radius: 8px;
       font-size: 13px;
       font-family: monospace;
+      background: var(--input-bg);
+      color: var(--text-primary);
+      transition: border-color 0.3s, background 0.3s, color 0.3s;
     }
     
     .settings-input:focus {
@@ -432,8 +546,9 @@
     
     .settings-note {
       font-size: 11px;
-      color: #888;
+      color: var(--text-muted);
       margin-top: 8px;
+      transition: color 0.3s;
     }
     
     .settings-note a {
@@ -448,15 +563,17 @@
     .settings-select {
       width: 100%;
       padding: 10px;
-      border: 2px solid #e0e0e0;
+      border: 2px solid var(--border-color);
       border-radius: 8px;
       font-size: 13px;
-      background: white;
+      background: var(--input-bg);
+      color: var(--text-primary);
       cursor: pointer;
       appearance: none;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
       background-position: right 10px center;
+      transition: border-color 0.3s, background-color 0.3s, color 0.3s;
     }
     
     .settings-select:focus {
@@ -491,44 +608,6 @@
       flex-direction: column;
       min-height: 0;
     }
-    
-    /* Debug button */
-    .debug-btn {
-      background: #f0f0f0;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      padding: 6px 12px;
-      font-size: 11px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    
-    .debug-btn:hover {
-      background: #667eea;
-      color: white;
-      border-color: #667eea;
-    }
-    
-    .debug-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    
-    /* Extraction status */
-    .extraction-status {
-      font-size: 11px;
-      color: #888;
-      text-align: center;
-      padding: 5px;
-      background: #f8f9fa;
-      border-radius: 6px;
-      margin-top: 8px;
-    }
-    
-    .extraction-status.complete {
-      background: #e8f5e9;
-      color: #2e7d32;
-    }
   </style>
 </head>
 <body>
@@ -541,6 +620,9 @@
       </h1>
       <p class="subtitle">AI-powered webpage analysis</p>
     </div>
+    
+    <!-- Theme Toggle Button -->
+    <button class="theme-btn" id="themeBtn" title="Toggle dark/light theme">🌙</button>
     
     <!-- Pop-out Button -->
     <button class="popout-btn" id="popoutBtn" title="Open in window (stays open)">⬈</button>
@@ -572,40 +654,23 @@
         </button>
       </div>
       
-      <!-- Custom Query Input -->
-      <div class="query-section">
-        <label class="query-label">Ask anything about this page:</label>
-        <div class="query-input-wrapper">
-          <textarea 
-            class="query-input" 
-            id="queryInput" 
-            placeholder="e.g., What are the main arguments? Summarize the conclusion..."
-          ></textarea>
-          <button class="send-btn" id="sendBtn" title="Send">➤</button>
+      <!-- Chat Container -->
+      <div class="chat-container">
+        <div class="chat-header">
+          <span class="chat-header-label">💬 Chat</span>
+          <button class="clear-chat-btn" id="clearChatBtn" title="Clear chat history">Clear</button>
         </div>
-      </div>
-      
-      <!-- Debug: Save extracted content -->
-      <div class="options-row" style="gap: 8px;">
-        <button class="debug-btn" id="autoScrollBtn" title="Auto-scroll page to capture all content">
-          📜 Auto-Scroll & Extract
-        </button>
-        <button class="debug-btn" id="saveContentBtn" title="Save extracted content to file for verification">
-          💾 Save Content
-        </button>
-      </div>
-      
-      <!-- Extraction status -->
-      <div class="extraction-status" id="extractionStatus">
-        <span id="charCount">0</span> chars extracted
-      </div>
-      
-      <!-- Response Section -->
-      <div class="response-section" id="responseSection">
-        <label class="response-label">Response:</label>
-        <div class="response-wrapper">
-          <div class="response-box" id="responseBox"></div>
-          <button class="copy-btn" id="copyBtn">Copy</button>
+        <div class="chat-messages" id="chatMessages">
+          <!-- Chat messages will be added here -->
+        </div>
+        <div class="chat-input-area">
+          <textarea 
+            class="chat-input" 
+            id="queryInput" 
+            placeholder="Ask anything about this page..."
+            rows="1"
+          ></textarea>
+          <button class="chat-send-btn" id="sendBtn" title="Send">➤</button>
         </div>
       </div>
     </div>

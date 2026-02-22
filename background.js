@@ -101,11 +101,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 /**
  * Main function to handle AI queries using selected provider
- * @param {Object} request - Request object containing query and page content
+ * @param {Object} request - Request object containing query, page content, and chat history
  * @returns {Promise<string>} - AI response
  */
 async function handleAIQuery(request) {
-  const { query, pageContent } = request;
+  const { query, pageContent, chatHistory = [] } = request;
   
   // Get selected model and API key from storage
   const storage = await chrome.storage.local.get(['selectedModel', 'groqApiKey', 'geminiApiKey', 'openaiApiKey', 'grokApiKey']);
@@ -117,26 +117,50 @@ async function handleAIQuery(request) {
     throw new Error(`API key not configured for ${config.name}. Please add your API key in Settings.`);
   }
   
-  // Build the prompt (keeping it short to save tokens)
-  const prompt = buildPrompt(query, pageContent);
+  // Build the context prompt (page content - sent only on first message)
+  const contextPrompt = buildContextPrompt(pageContent);
+  
+  // Build current query prompt
+  const queryPrompt = buildQueryPrompt(query, pageContent);
   
   // Make API request based on provider
   let response, data, responseText;
   
   if (model === 'gemini') {
-    // Gemini uses a different API format and supports vision
-    const parts = [{
-      text: `You are a helpful assistant that analyzes webpage content. Be concise and direct.\n\n${prompt}`
-    }];
+    // Gemini uses a different API format
+    // Build conversation contents array
+    const contents = [];
     
-    // Add images for vision analysis (Gemini supports up to ~16 images)
+    // Add system context as first user message if no history
+    if (chatHistory.length === 0) {
+      contents.push({
+        role: 'user',
+        parts: [{ text: `You are a helpful assistant analyzing this webpage. Be concise and direct.\n\n${contextPrompt}` }]
+      });
+      contents.push({
+        role: 'model',
+        parts: [{ text: 'I understand. I\'ll help you analyze this webpage content. What would you like to know?' }]
+      });
+    }
+    
+    // Add chat history
+    for (const msg of chatHistory) {
+      contents.push({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }]
+      });
+    }
+    
+    // Build current message parts
+    const parts = [{ text: queryPrompt }];
+    
+    // Add images for vision analysis (Gemini supports vision)
     const imagesWithBase64 = (pageContent.images || [])
       .filter(img => img.base64)
-      .slice(0, 5); // Limit to 5 images to stay within limits
+      .slice(0, 5); // Limit to 5 images
     
     if (imagesWithBase64.length > 0) {
       for (const img of imagesWithBase64) {
-        // Extract mime type and base64 data
         const match = img.base64.match(/^data:([^;]+);base64,(.+)$/);
         if (match) {
           parts.push({
@@ -149,13 +173,19 @@ async function handleAIQuery(request) {
       }
     }
     
+    // Add current query
+    contents.push({
+      role: 'user',
+      parts: parts
+    });
+    
     response = await fetch(`${config.endpoint}?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        contents: [{ parts }],
+        contents: contents,
         generationConfig: {
           maxOutputTokens: config.maxTokens,
           temperature: config.temperature
@@ -173,6 +203,28 @@ async function handleAIQuery(request) {
     responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
   } else {
     // OpenAI-compatible format (Groq, OpenAI, Grok)
+    // Build messages array
+    const messages = [
+      {
+        role: 'system',
+        content: `You are a helpful assistant that analyzes webpage content. Be concise and direct.\n\n${contextPrompt}`
+      }
+    ];
+    
+    // Add chat history
+    for (const msg of chatHistory) {
+      messages.push({
+        role: msg.role,
+        content: msg.content
+      });
+    }
+    
+    // Add current query
+    messages.push({
+      role: 'user',
+      content: queryPrompt
+    });
+    
     response = await fetch(config.endpoint, {
       method: 'POST',
       headers: {
@@ -181,16 +233,7 @@ async function handleAIQuery(request) {
       },
       body: JSON.stringify({
         model: config.model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful assistant that analyzes webpage content. Be concise and direct.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
+        messages: messages,
         max_tokens: config.maxTokens,
         temperature: config.temperature
       })
@@ -214,34 +257,44 @@ async function handleAIQuery(request) {
 }
 
 /**
- * Builds a concise prompt to minimize token usage
- * @param {string} query - User's question
+ * Builds context prompt with page content (used in system message)
  * @param {Object} pageContent - Extracted page content
- * @returns {string} - Formatted prompt
+ * @returns {string} - Formatted context
  */
-function buildPrompt(query, pageContent) {
-  // Keep prompt minimal to save tokens
-  let prompt = `Webpage: ${pageContent.title}\n\n`;
+function buildContextPrompt(pageContent) {
+  let prompt = `Webpage: ${pageContent.title}\nURL: ${pageContent.url}\n\n`;
   
-  // Increased content length for better context (Wikipedia has 15k+ chars)
-  const maxContentLength = 12000; // ~3000 tokens
+  // Content summary
+  const maxContentLength = 10000; // ~2500 tokens
   let content = pageContent.textContent || '';
   if (content.length > maxContentLength) {
     content = content.substring(0, maxContentLength) + '...';
   }
   
-  // Add structure summary (headings - important for Wikipedia)
+  // Add structure summary (headings)
   if (pageContent.structuredContent?.headings?.length > 0) {
     const headings = pageContent.structuredContent.headings
-      .slice(0, 10) // Include more headings
+      .slice(0, 10)
       .map(h => h.text)
       .join(', ');
     prompt += `Topics: ${headings}\n\n`;
   }
   
-  prompt += `Content:\n${content}\n\n`;
+  prompt += `Content:\n${content}`;
   
-  // Add image information
+  return prompt;
+}
+
+/**
+ * Builds query prompt for current user message
+ * @param {string} query - User's question
+ * @param {Object} pageContent - Extracted page content
+ * @returns {string} - Formatted query
+ */
+function buildQueryPrompt(query, pageContent) {
+  let prompt = query;
+  
+  // Add image info if relevant to query
   if (pageContent.images?.length > 0) {
     const imagesWithBase64 = pageContent.images.filter(img => img.base64);
     const imgDescs = pageContent.images
@@ -251,14 +304,12 @@ function buildPrompt(query, pageContent) {
       .join('; ');
     
     if (imagesWithBase64.length > 0) {
-      prompt += `[${imagesWithBase64.length} images attached for vision analysis]\n`;
+      prompt += `\n\n[${imagesWithBase64.length} images attached]`;
     }
     if (imgDescs) {
-      prompt += `Image descriptions: ${imgDescs}\n\n`;
+      prompt += `\nImage descriptions: ${imgDescs}`;
     }
   }
-  
-  prompt += `Question: ${query}\nAnswer concisely:`;
   
   return prompt;
 }

@@ -16,16 +16,16 @@ const elements = {
   queryInput: document.getElementById('queryInput'),
   sendBtn: document.getElementById('sendBtn'),
 
-  // Response elements
-  responseSection: document.getElementById('responseSection'),
-  responseBox: document.getElementById('responseBox'),
-  copyBtn: document.getElementById('copyBtn'),
+  // Chat elements
+  chatMessages: document.getElementById('chatMessages'),
+  clearChatBtn: document.getElementById('clearChatBtn'),
   
   // Settings elements
   settingsBtn: document.getElementById('settingsBtn'),
   settingsPanel: document.getElementById('settingsPanel'),
   closeSettings: document.getElementById('closeSettings'),
   popoutBtn: document.getElementById('popoutBtn'),
+  themeBtn: document.getElementById('themeBtn'),
   modelSelect: document.getElementById('modelSelect'),
   apiKeyInput: document.getElementById('apiKeyInput'),
   apiKeyLabel: document.getElementById('apiKeyLabel'),
@@ -33,19 +33,15 @@ const elements = {
   saveSettings: document.getElementById('saveSettings'),
   
   // Quick action buttons
-  quickBtns: document.querySelectorAll('.quick-btn'),
-  
-  // Debug buttons
-  saveContentBtn: document.getElementById('saveContentBtn'),
-  autoScrollBtn: document.getElementById('autoScrollBtn'),
-  
-  // Status elements
-  extractionStatus: document.getElementById('extractionStatus'),
-  charCount: document.getElementById('charCount')
+  quickBtns: document.querySelectorAll('.quick-btn')
 };
 
 // Store extracted page content
 let pageContent = null;
+
+// Chat state management
+let chatHistory = []; // Array of {role: 'user'|'assistant', content: string}
+let currentPageUrl = null; // For per-page chat persistence
 
 // Model configuration info
 const MODEL_CONFIG = {
@@ -90,6 +86,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.popoutBtn.style.display = 'none';
   }
   
+  // Load saved theme preference
+  await loadTheme();
+  
   // Load current page info
   await loadCurrentPageInfo();
   
@@ -123,11 +122,14 @@ async function loadCurrentPageInfo() {
       elements.pageTitle.textContent = tab.title || 'Unknown Page';
       elements.pageUrl.textContent = tab.url || '';
       
+      // Store current page URL for chat persistence
+      currentPageUrl = tab.url;
+      
+      // Load chat history for this page
+      await loadChatHistory();
+      
       // Extract content from the page
       await extractPageContent(tab.id);
-      
-      // Update extraction status
-      updateExtractionStatus();
     }
   } catch (error) {
     elements.pageTitle.textContent = 'Error loading page';
@@ -229,8 +231,8 @@ function setupEventListeners() {
     });
   });
   
-  // Copy button
-  elements.copyBtn.addEventListener('click', copyResponseToClipboard);
+  // Clear chat button
+  elements.clearChatBtn.addEventListener('click', clearChat);
   
   // Settings panel toggle
   elements.settingsBtn.addEventListener('click', () => {
@@ -271,11 +273,11 @@ function setupEventListeners() {
   // Save settings
   elements.saveSettings.addEventListener('click', saveApiKey);
   
-  // Save extracted content for debugging
-  elements.saveContentBtn.addEventListener('click', saveExtractedContent);
+  // Theme toggle button
+  elements.themeBtn.addEventListener('click', toggleTheme);
   
-  // Auto-scroll button
-  elements.autoScrollBtn.addEventListener('click', triggerAutoScroll);
+  // Auto-resize chat input
+  elements.queryInput.addEventListener('input', autoResizeInput);
 }
 
 // ============================================================================
@@ -283,84 +285,111 @@ function setupEventListeners() {
 // ============================================================================
 
 /**
- * Handle sending a query to the AI
+ * Handle sending a query to the AI (chat-based)
  */
 async function handleSendQuery() {
   const query = elements.queryInput.value.trim();
   
   // Validate query
   if (!query) {
-    showResponse('Please enter a question about this page.', 'error');
     return;
   }
   
   // Validate page content
   if (!pageContent) {
-    showResponse('Unable to extract page content. Please refresh and try again.', 'error');
+    addChatMessage('Unable to extract page content. Please refresh and try again.', 'error');
     return;
   }
   
-  // Show loading state
-  showLoading();
+  // Add user message to chat
+  addChatMessage(query, 'user');
+  chatHistory.push({ role: 'user', content: query });
+  
+  // Clear input and reset height
+  elements.queryInput.value = '';
+  elements.queryInput.style.height = 'auto';
+  
+  // Show loading indicator
+  const loadingEl = addChatMessage('', 'loading');
+  elements.sendBtn.disabled = true;
   
   try {
-    // Send query to background script
+    // Send query with conversation history to background script
     const response = await chrome.runtime.sendMessage({
       action: 'queryAI',
       query: query,
-      pageContent: pageContent
+      pageContent: pageContent,
+      chatHistory: chatHistory.slice(0, -1) // Exclude the message we just added
     });
     
+    // Remove loading indicator
+    loadingEl.remove();
+    elements.sendBtn.disabled = false;
+    
     if (response.success) {
-      showResponse(response.data);
+      addChatMessage(response.data, 'assistant');
+      chatHistory.push({ role: 'assistant', content: response.data });
+      // Save chat history
+      await saveChatHistory();
     } else {
-      showResponse(response.error || 'Unknown error occurred', 'error');
+      addChatMessage(response.error || 'Unknown error occurred', 'error');
     }
   } catch (error) {
-    showResponse(`Error: ${error.message}`, 'error');
+    loadingEl.remove();
+    elements.sendBtn.disabled = false;
+    addChatMessage(`Error: ${error.message}`, 'error');
   }
 }
 
 // ============================================================================
-// UI HELPERS
+// CHAT UI HELPERS
 // ============================================================================
 
 /**
- * Show loading state in the response box
+ * Add a message to the chat display
+ * @param {string} content - Message content
+ * @param {string} type - Message type ('user', 'assistant', 'error', 'loading')
+ * @returns {HTMLElement} - The created message element
  */
-function showLoading() {
-  elements.responseSection.classList.add('visible');
-  elements.responseBox.classList.add('loading');
-  elements.responseBox.classList.remove('error');
-  elements.responseBox.innerHTML = `
-    <div class="loading-dots">
-      <span></span>
-      <span></span>
-      <span></span>
-    </div>
-    <p style="margin-top: 10px;">Analyzing page content...</p>
-  `;
-  elements.sendBtn.disabled = true;
-}
-
-/**
- * Display response in the response box
- * @param {string} message - Response message to display
- * @param {string} type - Type of message ('success' or 'error')
- */
-function showResponse(message, type = 'success') {
-  elements.responseSection.classList.add('visible');
-  elements.responseBox.classList.remove('loading');
-  elements.sendBtn.disabled = false;
+function addChatMessage(content, type) {
+  const messageEl = document.createElement('div');
+  messageEl.className = `chat-message ${type}`;
   
-  if (type === 'error') {
-    elements.responseBox.classList.add('error');
-    elements.responseBox.textContent = message;
+  if (type === 'loading') {
+    messageEl.innerHTML = `
+      <div class="loading-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    `;
+  } else if (type === 'error') {
+    messageEl.textContent = content;
   } else {
-    elements.responseBox.classList.remove('error');
-    // Convert markdown-like formatting to HTML
-    elements.responseBox.innerHTML = formatResponse(message);
+    // Format assistant messages with markdown support
+    messageEl.innerHTML = type === 'assistant' ? formatResponse(content) : escapeHtml(content);
   }
+  
+  elements.chatMessages.appendChild(messageEl);
+  
+  // Scroll to bottom
+  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+  
+  return messageEl;
+}
+
+/**
+ * Escape HTML in user messages
+ * @param {string} text - Text to escape
+ * @returns {string} - Escaped text
+ */
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 /**
@@ -392,22 +421,61 @@ function formatResponse(text) {
 }
 
 /**
- * Copy response text to clipboard
+ * Load chat history for current page from storage
  */
-async function copyResponseToClipboard() {
-  const text = elements.responseBox.textContent;
+async function loadChatHistory() {
+  if (!currentPageUrl) return;
   
   try {
-    await navigator.clipboard.writeText(text);
+    const key = `chat_${btoa(currentPageUrl).substring(0, 50)}`;
+    const result = await chrome.storage.local.get(key);
     
-    // Show feedback
-    const originalText = elements.copyBtn.textContent;
-    elements.copyBtn.textContent = 'Copied!';
-    setTimeout(() => {
-      elements.copyBtn.textContent = originalText;
-    }, 2000);
+    if (result[key]) {
+      chatHistory = result[key];
+      // Render existing messages
+      chatHistory.forEach(msg => {
+        addChatMessage(msg.content, msg.role);
+      });
+    } else {
+      chatHistory = [];
+    }
   } catch (error) {
-    // Copy failed
+    chatHistory = [];
+  }
+}
+
+/**
+ * Save chat history for current page to storage
+ */
+async function saveChatHistory() {
+  if (!currentPageUrl) return;
+  
+  try {
+    const key = `chat_${btoa(currentPageUrl).substring(0, 50)}`;
+    await chrome.storage.local.set({ [key]: chatHistory });
+  } catch (error) {
+    // Save failed silently
+  }
+}
+
+/**
+ * Clear chat history for current page
+ */
+async function clearChat() {
+  // Clear UI
+  elements.chatMessages.innerHTML = '';
+  
+  // Clear memory
+  chatHistory = [];
+  
+  // Clear storage
+  if (currentPageUrl) {
+    try {
+      const key = `chat_${btoa(currentPageUrl).substring(0, 50)}`;
+      await chrome.storage.local.remove(key);
+    } catch (error) {
+      // Remove failed silently
+    }
   }
 }
 
@@ -454,112 +522,45 @@ async function saveApiKey() {
 }
 
 // ============================================================================
-// DEBUG: Save Extracted Content to File
+// THEME MANAGEMENT
 // ============================================================================
 
 /**
- * Update the extraction status display
+ * Load saved theme preference from storage
  */
-function updateExtractionStatus() {
-  if (pageContent) {
-    const charCount = pageContent.textContent?.length || 0;
-    elements.charCount.textContent = charCount.toLocaleString();
-    
-    if (pageContent.isComplete) {
-      elements.extractionStatus.classList.add('complete');
-      elements.extractionStatus.innerHTML = `✅ <span id="charCount">${charCount.toLocaleString()}</span> chars extracted (complete)`;
-    }
-  }
-}
-
-/**
- * Trigger auto-scroll on the page to extract all content
- */
-async function triggerAutoScroll() {
+async function loadTheme() {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    if (!tab) {
-      alert('No active tab found');
-      return;
-    }
-    
-    // Disable button and show loading
-    elements.autoScrollBtn.disabled = true;
-    elements.autoScrollBtn.textContent = '⏳ Scrolling...';
-    
-    // Send auto-scroll command to content script
-    const response = await chrome.tabs.sendMessage(tab.id, { action: 'autoScroll' });
-    
-    if (response?.success) {
-      // Re-extract content after scroll
-      await extractPageContent(tab.id);
-      updateExtractionStatus();
-      
-      elements.autoScrollBtn.textContent = '✅ Done!';
-      setTimeout(() => {
-        elements.autoScrollBtn.textContent = '📜 Auto-Scroll & Extract';
-        elements.autoScrollBtn.disabled = false;
-      }, 2000);
+    const result = await chrome.storage.local.get('theme');
+    if (result.theme === 'dark') {
+      document.body.classList.add('dark-theme');
+      elements.themeBtn.textContent = '☀️';
     }
   } catch (error) {
-    elements.autoScrollBtn.textContent = '📜 Auto-Scroll & Extract';
-    elements.autoScrollBtn.disabled = false;
-    alert('Error: ' + error.message);
+    // Default to light theme
   }
 }
 
 /**
- * Saves the extracted page content to a JSON file for verification
- * This helps debug and verify the content extraction is working correctly
+ * Toggle between dark and light theme
  */
-function saveExtractedContent() {
-  if (!pageContent) {
-    alert('No content extracted yet. Please wait for the page to load.');
-    return;
+async function toggleTheme() {
+  const isDark = document.body.classList.toggle('dark-theme');
+  elements.themeBtn.textContent = isDark ? '☀️' : '🌙';
+  
+  try {
+    await chrome.storage.local.set({ theme: isDark ? 'dark' : 'light' });
+  } catch (error) {
+    // Save failed silently
   }
-  
-  // Create a detailed content object
-  const contentToSave = {
-    extractedAt: new Date().toISOString(),
-    pageInfo: {
-      title: pageContent.title,
-      url: pageContent.url
-    },
-    isComplete: pageContent.isComplete || false,
-    textContent: pageContent.textContent,
-    structuredContent: pageContent.structuredContent,
-    images: pageContent.images?.map(img => ({
-      src: img.src,
-      alt: img.alt,
-      title: img.title,
-      dimensions: `${img.width}x${img.height}`,
-      hasBase64: !!img.base64
-    })),
-    scrollPositions: pageContent.scrollPositions || [],
-    stats: {
-      textLength: pageContent.textContent?.length || 0,
-      headingsCount: pageContent.structuredContent?.headings?.length || 0,
-      imagesCount: pageContent.images?.length || 0,
-      scrollPositionsTracked: pageContent.scrollPositions?.length || 0
-    }
-  };
-  
-  // Convert to formatted JSON string
-  const jsonString = JSON.stringify(contentToSave, null, 2);
-  
-  // Create blob and download
-  const blob = new Blob([jsonString], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  
-  // Create download link
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `extracted-content-${Date.now()}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  
-  alert('Content saved! Check your Downloads folder.');
+}
+
+/**
+ * Auto-resize chat input based on content
+ */
+function autoResizeInput() {
+  const input = elements.queryInput;
+  // Reset height to auto to get the correct scrollHeight
+  input.style.height = 'auto';
+  // Set height to scrollHeight, but respect max-height in CSS
+  input.style.height = Math.min(input.scrollHeight, 100) + 'px';
 }
