@@ -15,8 +15,7 @@ const elements = {
   // Query elements
   queryInput: document.getElementById('queryInput'),
   sendBtn: document.getElementById('sendBtn'),
-  includeImages: document.getElementById('includeImages'),
-  
+
   // Response elements
   responseSection: document.getElementById('responseSection'),
   responseBox: document.getElementById('responseBox'),
@@ -26,7 +25,10 @@ const elements = {
   settingsBtn: document.getElementById('settingsBtn'),
   settingsPanel: document.getElementById('settingsPanel'),
   closeSettings: document.getElementById('closeSettings'),
+  modelSelect: document.getElementById('modelSelect'),
   apiKeyInput: document.getElementById('apiKeyInput'),
+  apiKeyLabel: document.getElementById('apiKeyLabel'),
+  apiKeyNote: document.getElementById('apiKeyNote'),
   saveSettings: document.getElementById('saveSettings'),
   
   // Quick action buttons
@@ -43,6 +45,34 @@ const elements = {
 
 // Store extracted page content
 let pageContent = null;
+
+// Model configuration info
+const MODEL_CONFIG = {
+  groq: {
+    label: 'Groq API Key',
+    placeholder: 'gsk_...',
+    note: 'Get your FREE API key from <a href="https://console.groq.com/keys" target="_blank">Groq Console</a><br><strong>Free tier:</strong> 30 requests/min, very fast!',
+    prefix: 'gsk_'
+  },
+  gemini: {
+    label: 'Google Gemini API Key',
+    placeholder: 'AIza...',
+    note: 'Get your API key from <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a><br><strong>Free tier:</strong> 15 requests/min',
+    prefix: 'AIza'
+  },
+  openai: {
+    label: 'OpenAI API Key',
+    placeholder: 'sk-...',
+    note: 'Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a><br><strong>Note:</strong> Requires paid credits',
+    prefix: 'sk-'
+  },
+  grok: {
+    label: 'xAI Grok API Key',
+    placeholder: 'xai-...',
+    note: 'Get your API key from <a href="https://console.x.ai" target="_blank">xAI Console</a><br><strong>Note:</strong> Check pricing at x.ai',
+    prefix: 'xai-'
+  }
+};
 
 // ============================================================================
 // INITIALIZATION
@@ -125,16 +155,37 @@ async function extractPageContent(tabId) {
 }
 
 /**
- * Load saved API key from storage
+ * Load saved API key and model from storage
  */
 async function loadSavedApiKey() {
   try {
-    const response = await chrome.runtime.sendMessage({ action: 'getApiKey' });
-    if (response.success && response.apiKey) {
-      elements.apiKeyInput.value = response.apiKey;
+    const response = await chrome.runtime.sendMessage({ action: 'getSettings' });
+    if (response.success) {
+      // Set model selection
+      if (response.model) {
+        elements.modelSelect.value = response.model;
+      }
+      // Update UI for selected model
+      updateApiKeyUI(elements.modelSelect.value);
+      // Set API key if available for selected model
+      if (response.apiKey) {
+        elements.apiKeyInput.value = response.apiKey;
+      }
     }
   } catch (error) {
-    console.error('Error loading API key:', error);
+    console.error('Error loading settings:', error);
+  }
+}
+
+/**
+ * Update API key input UI based on selected model
+ */
+function updateApiKeyUI(model) {
+  const config = MODEL_CONFIG[model];
+  if (config) {
+    elements.apiKeyLabel.textContent = config.label;
+    elements.apiKeyInput.placeholder = config.placeholder;
+    elements.apiKeyNote.innerHTML = config.note;
   }
 }
 
@@ -177,6 +228,19 @@ function setupEventListeners() {
     elements.settingsPanel.classList.remove('visible');
   });
   
+  // Model selection change
+  elements.modelSelect.addEventListener('change', async (e) => {
+    const model = e.target.value;
+    updateApiKeyUI(model);
+    // Load saved API key for the selected model
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'getSettings', model: model });
+      elements.apiKeyInput.value = response.success && response.apiKey ? response.apiKey : '';
+    } catch (error) {
+      elements.apiKeyInput.value = '';
+    }
+  });
+  
   // Save settings
   elements.saveSettings.addEventListener('click', saveApiKey);
   
@@ -217,8 +281,7 @@ async function handleSendQuery() {
     const response = await chrome.runtime.sendMessage({
       action: 'queryAI',
       query: query,
-      pageContent: pageContent,
-      includeImages: elements.includeImages.checked
+      pageContent: pageContent
     });
     
     if (response.success) {
@@ -327,59 +390,43 @@ async function copyResponseToClipboard() {
 // ============================================================================
 
 /**
- * Save API key to storage
+ * Save API key and model to storage
  */
 async function saveApiKey() {
   const apiKey = elements.apiKeyInput.value.trim();
+  const model = elements.modelSelect.value;
+  const config = MODEL_CONFIG[model];
   
   if (!apiKey) {
     alert('Please enter a valid API key');
     return;
   }
   
-  // Validate API key format (Groq keys start with gsk_)
-  if (!apiKey.startsWith('gsk_')) {
-    alert('Invalid API key format. Groq keys start with "gsk_"');
+  // Validate API key format based on selected model
+  if (config.prefix && !apiKey.startsWith(config.prefix)) {
+    alert(`Invalid API key format. ${config.label} should start with "${config.prefix}"`);
     return;
   }
   
   try {
     const response = await chrome.runtime.sendMessage({
-      action: 'saveApiKey',
+      action: 'saveSettings',
+      model: model,
       apiKey: apiKey
     });
     
     if (response.success) {
       // Close settings panel
       elements.settingsPanel.classList.remove('visible');
-      alert('API key saved successfully!');
+      alert('Settings saved successfully!');
     } else {
-      alert('Failed to save API key: ' + response.error);
+      alert('Failed to save settings: ' + response.error);
     }
   } catch (error) {
-    console.error('Error saving API key:', error);
-    alert('Error saving API key: ' + error.message);
+    console.error('Error saving settings:', error);
+    alert('Error saving settings: ' + error.message);
   }
 }
-
-// ============================================================================
-// IMAGE ANALYSIS (FREE with Gemini!)
-// ============================================================================
-
-/**
- * Gemini FREE tier supports vision/image analysis!
- * Just enable the "Include images in analysis" toggle in the popup.
- * 
- * The extension will automatically:
- * 1. Extract images from the page (up to 5)
- * 2. Convert them to base64
- * 3. Send them to Gemini for analysis
- * 
- * Example questions when images are enabled:
- * - "Describe the images on this page"
- * - "What does the diagram show?"
- * - "Summarize the infographic"
- */
 
 // ============================================================================
 // DEBUG: Save Extracted Content to File

@@ -1,46 +1,49 @@
 /**
  * Background Service Worker - Handles AI API communication
- * Uses Groq FREE API (30 requests/min, very fast!)
+ * Supports multiple AI providers: Groq, Gemini, OpenAI, and Grok
  */
 
 // ============================================================================
-// CONFIGURATION - GROQ FREE API
+// CONFIGURATION - MULTIPLE AI PROVIDERS
 // ============================================================================
-
-/**
- * Groq API Configuration - 100% FREE
- * 
- * FREE TIER (llama-3.3-70b-versatile):
- * - 30 requests per minute
- * - 15,000 tokens per minute
- * - Very fast inference (fastest in market)
- * - Get free API key: https://console.groq.com/keys
- */
 
 const CONFIG = {
-  // =========================================================================
-  // FREE VERSION - Groq with Llama 3.3 70B (Default)
-  // =========================================================================
-  FREE: {
-    model: 'llama-3.3-70b-versatile',  // Powerful free model
-    maxTokens: 1500,                    // Increased for detailed responses
+  groq: {
+    name: 'Meta Llama (Groq)',
+    model: 'llama-3.3-70b-versatile',
+    maxTokens: 1500,
     temperature: 0.7,
-    endpoint: 'https://api.groq.com/openai/v1/chat/completions'
+    endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+    storageKey: 'groqApiKey'
   },
-  
-  // =========================================================================
-  // ALTERNATIVE - Smaller/faster model (uncomment to use)
-  // =========================================================================
-  // FAST: {
-  //   model: 'llama-3.1-8b-instant',   // Smaller, faster
-  //   maxTokens: 500,
-  //   temperature: 0.7,
-  //   endpoint: 'https://api.groq.com/openai/v1/chat/completions'
-  // }
+  gemini: {
+    name: 'Google Gemini',
+    model: 'gemini-1.5-flash',
+    maxTokens: 1500,
+    temperature: 0.7,
+    endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+    storageKey: 'geminiApiKey'
+  },
+  openai: {
+    name: 'OpenAI ChatGPT',
+    model: 'gpt-4o-mini',
+    maxTokens: 1500,
+    temperature: 0.7,
+    endpoint: 'https://api.openai.com/v1/chat/completions',
+    storageKey: 'openaiApiKey'
+  },
+  grok: {
+    name: 'xAI Grok',
+    model: 'grok-2-latest',
+    maxTokens: 1500,
+    temperature: 0.7,
+    endpoint: 'https://api.x.ai/v1/chat/completions',
+    storageKey: 'grokApiKey'
+  }
 };
 
-// Current active configuration
-const ACTIVE_CONFIG = CONFIG.FREE;
+// Default model
+const DEFAULT_MODEL = 'groq';
 
 // ============================================================================
 // MESSAGE HANDLING
@@ -58,18 +61,35 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Keep channel open for async response
   }
   
-  // Handle API key storage
-  if (request.action === 'saveApiKey') {
-    chrome.storage.local.set({ groqApiKey: request.apiKey })
+  // Handle settings storage (model + API key)
+  if (request.action === 'saveSettings') {
+    const { model, apiKey } = request;
+    const config = CONFIG[model];
+    if (!config) {
+      sendResponse({ success: false, error: 'Invalid model' });
+      return true;
+    }
+    chrome.storage.local.set({ 
+      selectedModel: model,
+      [config.storageKey]: apiKey 
+    })
       .then(() => sendResponse({ success: true }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
   
-  // Handle API key retrieval
-  if (request.action === 'getApiKey') {
-    chrome.storage.local.get(['groqApiKey'])
-      .then(result => sendResponse({ success: true, apiKey: result.groqApiKey }))
+  // Handle settings retrieval
+  if (request.action === 'getSettings') {
+    chrome.storage.local.get(['selectedModel', 'groqApiKey', 'geminiApiKey', 'openaiApiKey', 'grokApiKey'])
+      .then(result => {
+        const model = request.model || result.selectedModel || DEFAULT_MODEL;
+        const config = CONFIG[model];
+        sendResponse({ 
+          success: true, 
+          model: model,
+          apiKey: result[config.storageKey] || ''
+        });
+      })
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
@@ -80,57 +100,91 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // ============================================================================
 
 /**
- * Main function to handle AI queries using Groq API
+ * Main function to handle AI queries using selected provider
  * @param {Object} request - Request object containing query and page content
  * @returns {Promise<string>} - AI response
  */
 async function handleAIQuery(request) {
   const { query, pageContent } = request;
   
-  // Get API key from storage
-  const { groqApiKey } = await chrome.storage.local.get(['groqApiKey']);
+  // Get selected model and API key from storage
+  const storage = await chrome.storage.local.get(['selectedModel', 'groqApiKey', 'geminiApiKey', 'openaiApiKey', 'grokApiKey']);
+  const model = storage.selectedModel || DEFAULT_MODEL;
+  const config = CONFIG[model];
+  const apiKey = storage[config.storageKey];
   
-  if (!groqApiKey) {
-    throw new Error('API key not configured. Get your FREE key from https://console.groq.com/keys');
+  if (!apiKey) {
+    throw new Error(`API key not configured for ${config.name}. Please add your API key in Settings.`);
   }
   
   // Build the prompt (keeping it short to save tokens)
   const prompt = buildPrompt(query, pageContent);
   
-  // Make API request (Groq uses OpenAI-compatible format)
-  const response = await fetch(ACTIVE_CONFIG.endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${groqApiKey}`
-    },
-    body: JSON.stringify({
-      model: ACTIVE_CONFIG.model,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a helpful assistant that analyzes webpage content. Be concise and direct.'
-        },
-        {
-          role: 'user',
-          content: prompt
+  // Make API request based on provider
+  let response, data, responseText;
+  
+  if (model === 'gemini') {
+    // Gemini uses a different API format
+    response = await fetch(`${config.endpoint}?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `You are a helpful assistant that analyzes webpage content. Be concise and direct.\n\n${prompt}`
+          }]
+        }],
+        generationConfig: {
+          maxOutputTokens: config.maxTokens,
+          temperature: config.temperature
         }
-      ],
-      max_tokens: ACTIVE_CONFIG.maxTokens,
-      temperature: ACTIVE_CONFIG.temperature
-    })
-  });
-  
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const errorMsg = errorData.error?.message || `API request failed: ${response.status}`;
-    throw new Error(errorMsg);
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMsg = errorData.error?.message || `API request failed: ${response.status}`;
+      throw new Error(errorMsg);
+    }
+    
+    data = await response.json();
+    responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  } else {
+    // OpenAI-compatible format (Groq, OpenAI, Grok)
+    response = await fetch(config.endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant that analyzes webpage content. Be concise and direct.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: config.maxTokens,
+        temperature: config.temperature
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMsg = errorData.error?.message || `API request failed: ${response.status}`;
+      throw new Error(errorMsg);
+    }
+    
+    data = await response.json();
+    responseText = data.choices?.[0]?.message?.content;
   }
-  
-  const data = await response.json();
-  
-  // Extract response text
-  const responseText = data.choices?.[0]?.message?.content;
   
   if (!responseText) {
     throw new Error('No response generated. Try a different question.');
@@ -194,5 +248,5 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 
-console.log('PageSage background service worker loaded (Groq API)');
+console.log('PageSage background service worker loaded (Multi-provider: Groq, Gemini, OpenAI, Grok)');
 

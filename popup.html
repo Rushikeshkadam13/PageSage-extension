@@ -401,6 +401,34 @@
       margin-top: 8px;
     }
     
+    .settings-note a {
+      color: #667eea;
+      text-decoration: none;
+    }
+    
+    .settings-note a:hover {
+      text-decoration: underline;
+    }
+    
+    .settings-select {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 13px;
+      background: white;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+    
+    .settings-select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
     /* Copy Button */
     .copy-btn {
       position: absolute;
@@ -515,15 +543,6 @@
         </div>
       </div>
       
-      <!-- Options -->
-      <div class="options-row">
-        <label class="toggle-switch">
-          <input type="checkbox" id="includeImages" disabled>
-          <span class="toggle-slider"></span>
-        </label>
-        <span>Image analysis (text-only with Groq)</span>
-      </div>
-      
       <!-- Debug: Save extracted content -->
       <div class="options-row" style="gap: 8px;">
         <button class="debug-btn" id="autoScrollBtn" title="Auto-scroll page to capture all content">
@@ -557,14 +576,24 @@
       </div>
       
       <div class="settings-group">
-        <label for="apiKeyInput">Groq API Key (FREE)</label>
+        <label for="modelSelect">AI Model</label>
+        <select class="settings-select" id="modelSelect">
+          <option value="groq">Meta Llama (Groq) - FREE</option>
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">OpenAI ChatGPT</option>
+          <option value="grok">xAI Grok</option>
+        </select>
+      </div>
+      
+      <div class="settings-group">
+        <label for="apiKeyInput" id="apiKeyLabel">Groq API Key</label>
         <input 
           type="password" 
           class="settings-input" 
           id="apiKeyInput" 
           placeholder="gsk_..."
         >
-        <p class="settings-note">
+        <p class="settings-note" id="apiKeyNote">
           Get your FREE API key from <a href="https://console.groq.com/keys" target="_blank">Groq Console</a><br>
           <strong>Free tier:</strong> 30 requests/min, very fast!
         </p>
