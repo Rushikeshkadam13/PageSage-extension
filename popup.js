@@ -98,8 +98,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Set up event listeners
   setupEventListeners();
-  
-  console.log('PageSage popup initialized');
 });
 
 /**
@@ -132,7 +130,6 @@ async function loadCurrentPageInfo() {
       updateExtractionStatus();
     }
   } catch (error) {
-    console.error('Error loading page info:', error);
     elements.pageTitle.textContent = 'Error loading page';
     elements.pageUrl.textContent = error.message;
   }
@@ -149,10 +146,8 @@ async function extractPageContent(tabId) {
     
     if (response) {
       pageContent = response;
-      console.log('Page content extracted:', pageContent);
     }
   } catch (error) {
-    console.error('Error extracting content:', error);
     
     // If content script is not loaded, inject it first
     try {
@@ -167,7 +162,7 @@ async function extractPageContent(tabId) {
         pageContent = response;
       }
     } catch (injectionError) {
-      console.error('Failed to inject content script:', injectionError);
+      // Content script injection failed
     }
   }
 }
@@ -191,7 +186,7 @@ async function loadSavedApiKey() {
       }
     }
   } catch (error) {
-    console.error('Error loading settings:', error);
+    // Settings load failed
   }
 }
 
@@ -322,7 +317,6 @@ async function handleSendQuery() {
       showResponse(response.error || 'Unknown error occurred', 'error');
     }
   } catch (error) {
-    console.error('Error sending query:', error);
     showResponse(`Error: ${error.message}`, 'error');
   }
 }
@@ -413,7 +407,7 @@ async function copyResponseToClipboard() {
       elements.copyBtn.textContent = originalText;
     }, 2000);
   } catch (error) {
-    console.error('Failed to copy:', error);
+    // Copy failed
   }
 }
 
@@ -455,7 +449,6 @@ async function saveApiKey() {
       alert('Failed to save settings: ' + response.error);
     }
   } catch (error) {
-    console.error('Error saving settings:', error);
     alert('Error saving settings: ' + error.message);
   }
 }
@@ -510,7 +503,6 @@ async function triggerAutoScroll() {
       }, 2000);
     }
   } catch (error) {
-    console.error('Auto-scroll error:', error);
     elements.autoScrollBtn.textContent = '📜 Auto-Scroll & Extract';
     elements.autoScrollBtn.disabled = false;
     alert('Error: ' + error.message);
@@ -569,12 +561,5 @@ function saveExtractedContent() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   
-  // Also log to console for quick viewing
-  console.log('=== EXTRACTED PAGE CONTENT ===');
-  console.log(contentToSave);
-  console.log('==============================');
-  
   alert('Content saved! Check your Downloads folder.');
 }
-
-console.log('PageSage popup script loaded');

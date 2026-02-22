@@ -31,8 +31,6 @@ let seenTextBlocks = new Set();
  * Initialize extraction when page loads
  */
 function initAutoExtraction() {
-  console.log('PageSage: Auto-extraction initialized');
-  
   // Initial extraction
   extractedContent.title = document.title;
   extractedContent.url = window.location.href;
@@ -86,7 +84,6 @@ function setupScrollListener() {
       
       if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 100) {
         extractedContent.isComplete = true;
-        console.log('PageSage: Page fully scrolled - extraction complete');
       }
     }, 200);
   });
@@ -129,8 +126,6 @@ function setupMutationObserver() {
 // ============================================================================
 
 async function autoScrollPage() {
-  console.log('PageSage: Starting auto-scroll...');
-  
   const scrollStep = window.innerHeight * 0.8;
   const maxScrolls = 50;
   let scrollCount = 0;
@@ -145,7 +140,6 @@ async function autoScrollPage() {
         clearInterval(scrollInterval);
         window.scrollTo(0, 0);
         extractedContent.isComplete = true;
-        console.log(`PageSage: Auto-scroll complete (${scrollCount} scrolls)`);
         resolve();
       }
     }, 300);
@@ -177,7 +171,6 @@ function extractAllContent() {
   updateImages();
   
   extractedContent.extractedAt = new Date().toISOString();
-  console.log(`PageSage: Extracted ${extractedContent.textContent.length} chars`);
 }
 
 /**
@@ -211,7 +204,6 @@ function findMainContent() {
   for (const selector of contentSelectors) {
     const el = document.querySelector(selector);
     if (el && el.textContent.trim().length > 500) {
-      console.log(`PageSage: Found main content via "${selector}"`);
       return el;
     }
   }
@@ -526,5 +518,3 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   return true;
 });
-
-console.log('PageSage: Content script loaded - auto-extraction active');

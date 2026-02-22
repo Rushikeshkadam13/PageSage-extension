@@ -244,9 +244,7 @@ function buildPrompt(query, pageContent) {
 
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
-    console.log('PageSage extension installed');
+    // Extension installed
   }
 });
-
-console.log('PageSage background service worker loaded (Multi-provider: Groq, Gemini, OpenAI, Grok)');
 
