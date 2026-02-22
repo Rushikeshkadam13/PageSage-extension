@@ -1,6 +1,6 @@
 {
   "name": "PageSage",
-  "description": "AI-powered extension to query and summarize webpage content including text and images",
+  "description": "AI-powered extension to query, summarize webpage content, and analyze images with Gemini vision",
   "version": "1.0.0",
   "manifest_version": 3,
   

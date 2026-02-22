@@ -124,18 +124,38 @@ async function handleAIQuery(request) {
   let response, data, responseText;
   
   if (model === 'gemini') {
-    // Gemini uses a different API format
+    // Gemini uses a different API format and supports vision
+    const parts = [{
+      text: `You are a helpful assistant that analyzes webpage content. Be concise and direct.\n\n${prompt}`
+    }];
+    
+    // Add images for vision analysis (Gemini supports up to ~16 images)
+    const imagesWithBase64 = (pageContent.images || [])
+      .filter(img => img.base64)
+      .slice(0, 5); // Limit to 5 images to stay within limits
+    
+    if (imagesWithBase64.length > 0) {
+      for (const img of imagesWithBase64) {
+        // Extract mime type and base64 data
+        const match = img.base64.match(/^data:([^;]+);base64,(.+)$/);
+        if (match) {
+          parts.push({
+            inline_data: {
+              mime_type: match[1],
+              data: match[2]
+            }
+          });
+        }
+      }
+    }
+    
     response = await fetch(`${config.endpoint}?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `You are a helpful assistant that analyzes webpage content. Be concise and direct.\n\n${prompt}`
-          }]
-        }],
+        contents: [{ parts }],
         generationConfig: {
           maxOutputTokens: config.maxTokens,
           temperature: config.temperature
@@ -221,15 +241,20 @@ function buildPrompt(query, pageContent) {
   
   prompt += `Content:\n${content}\n\n`;
   
-  // Add image descriptions
+  // Add image information
   if (pageContent.images?.length > 0) {
+    const imagesWithBase64 = pageContent.images.filter(img => img.base64);
     const imgDescs = pageContent.images
-      .slice(0, 3)
+      .slice(0, 5)
       .filter(img => img.alt)
       .map(img => img.alt)
       .join('; ');
+    
+    if (imagesWithBase64.length > 0) {
+      prompt += `[${imagesWithBase64.length} images attached for vision analysis]\n`;
+    }
     if (imgDescs) {
-      prompt += `Images: ${imgDescs}\n\n`;
+      prompt += `Image descriptions: ${imgDescs}\n\n`;
     }
   }
   
