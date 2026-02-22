@@ -25,6 +25,7 @@ const elements = {
   settingsBtn: document.getElementById('settingsBtn'),
   settingsPanel: document.getElementById('settingsPanel'),
   closeSettings: document.getElementById('closeSettings'),
+  popoutBtn: document.getElementById('popoutBtn'),
   modelSelect: document.getElementById('modelSelect'),
   apiKeyInput: document.getElementById('apiKeyInput'),
   apiKeyLabel: document.getElementById('apiKeyLabel'),
@@ -82,6 +83,13 @@ const MODEL_CONFIG = {
  * Initialize the popup when DOM is loaded
  */
 document.addEventListener('DOMContentLoaded', async () => {
+  // Check if we're in standalone window mode
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('tabId')) {
+    // Hide pop-out button in standalone mode
+    elements.popoutBtn.style.display = 'none';
+  }
+  
   // Load current page info
   await loadCurrentPageInfo();
   
@@ -99,8 +107,18 @@ document.addEventListener('DOMContentLoaded', async () => {
  */
 async function loadCurrentPageInfo() {
   try {
-    // Get the current active tab
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    // Check if we're in standalone window mode (tab ID passed via URL)
+    const urlParams = new URLSearchParams(window.location.search);
+    const passedTabId = urlParams.get('tabId');
+    
+    let tab;
+    if (passedTabId) {
+      // Standalone window mode - use the passed tab ID
+      tab = await chrome.tabs.get(parseInt(passedTabId));
+    } else {
+      // Normal popup mode - get active tab
+      [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    }
     
     if (tab) {
       // Display page info
@@ -226,6 +244,20 @@ function setupEventListeners() {
   
   elements.closeSettings.addEventListener('click', () => {
     elements.settingsPanel.classList.remove('visible');
+  });
+  
+  // Pop-out to standalone window (won't close when clicking outside)
+  elements.popoutBtn.addEventListener('click', async () => {
+    // Get current tab to pass its ID to the standalone window
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tabId = tab?.id || '';
+    chrome.windows.create({
+      url: chrome.runtime.getURL('popup.html') + '?tabId=' + tabId,
+      type: 'popup',
+      width: 450,
+      height: 650
+    });
+    window.close(); // Close the popup
   });
   
   // Model selection change
